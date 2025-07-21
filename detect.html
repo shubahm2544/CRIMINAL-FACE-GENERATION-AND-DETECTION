@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Detection</title>
+</head>
+<body>
+    <form id="videoForm" enctype="multipart/form-data">
+        <input type="file" name="video" accept=".mp4,.avi,.mov,.wmv" required>
+        <button type="submit">Process Video</button>
+    </form>
+
+    <div id="videoStatus"></div>
+    <div id="progressBar" style="display: none;">
+        <div class="progress"></div>
+    </div>
+
+    <div id="detectionResults"></div>
+    <div id="processedVideo"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const videoForm = document.getElementById('videoForm');
+            const videoStatus = document.getElementById('videoStatus');
+            const progressBar = document.getElementById('progressBar');
+            
+            if (videoForm) {
+                videoForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const videoFile = document.querySelector('input[type="file"]').files[0];
+                    if (!videoFile) {
+                        alert('Please select a video file first');
+                        return;
+                    }
+                    
+                    // Show processing status
+                    videoStatus.textContent = 'Processing video...';
+                    if (progressBar) progressBar.style.display = 'block';
+                    
+                    const formData = new FormData(videoForm);
+                    
+                    fetch('/detect_video', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Video processing failed');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Processing complete:', data);
+                        videoStatus.textContent = 'Processing complete!';
+                        
+                        // Display results
+                        if (data.detected_criminals.length > 0) {
+                            // Show detected criminals
+                            const resultDiv = document.getElementById('detectionResults');
+                            resultDiv.innerHTML = '<h3>Detected Criminals:</h3>';
+                            data.detected_criminals.forEach(criminal => {
+                                resultDiv.innerHTML += `
+                                    <div class="criminal-detection">
+                                        <p>Name: ${criminal.name}</p>
+                                        <p>Confidence: ${criminal.confidence.toFixed(2)}%</p>
+                                    </div>
+                                `;
+                            });
+                            
+                            // Show processed video
+                            if (data.processed_video) {
+                                const videoPlayer = document.createElement('video');
+                                videoPlayer.controls = true;
+                                videoPlayer.src = data.processed_video;
+                                document.getElementById('processedVideo').appendChild(videoPlayer);
+                            }
+                        } else {
+                            videoStatus.textContent = 'No criminals detected in the video';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        videoStatus.textContent = 'Error processing video: ' + error.message;
+                    });
+                });
+            }
+        });
+    </script>
+</body>
+</html>
